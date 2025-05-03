@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <stdexcept>
+#include <sys/types.h>
 #include "constants.h"
 uint32_t ParseTime(const std::string &time) {
   if (time.size() != 5 || time[2] != ':') {
@@ -21,4 +22,12 @@ bool IsValidName(const std::string &name) {
     return true;
   }
   return false;
+}
+
+
+std::string GetTimeString(uint32_t time) {
+  auto hours = std::to_string(time / 60);
+  auto minutes = std::to_string(time % 60);
+  return std::string(2 - hours.size(), '0') + hours + ":" +
+         std::string(2 - minutes.size(), '0') + minutes;
 }

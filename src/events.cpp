@@ -1,15 +1,30 @@
 #include "events.h"
+#include "constants.h"
+#include "table.h"
 #include "utils.h"
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <stdexcept>
+#include <string>
+
 Event::Event(int32_t id, uint32_t time, std::string client_name,
              uint32_t table_id)
-    : id(id), time(time), client_name(std::move(client_name)),
-      table_id(table_id) {}
+    : client_name_(std::move(client_name)), id_(id), time_(time),
+      table_id_(table_id) {}
+
 Event::Event(int32_t id, uint32_t time, std::string client_name)
-    : id(id), time(time), client_name(std::move(client_name)) {}
+    : client_name_(std::move(client_name)), id_(id), time_(time) {}
+
+uint32_t Event::GetTimeMinutes() const { return time_; }
+
+int32_t Event::GetID() const { return id_; }
+
+std::string Event::GetClientName() const { return client_name_; }
+
+std::optional<uint32_t> Event::GetTableID() const { return table_id_; }
 
 Event ValidateEvent(int32_t id, uint32_t time, std::string body,
                     uint32_t tables_cnt) {
@@ -30,7 +45,7 @@ Event ValidateEvent(int32_t id, uint32_t time, std::string body,
     if (table_id > tables_cnt) {
       throw std::runtime_error("Incorrect table number");
     }
-    return Event(id, time, std::move(client_name), table_id);
+    return Event(id, time, std::move(client_name), table_id - 1);
   } else {
     if (!IsValidName(body)) {
       throw std::runtime_error("Incorrect name format");
@@ -73,4 +88,151 @@ std::vector<Event> ReadEvents(std::ifstream &in, uint32_t tables_cnt) {
         ValidateEvent(id, time_minutes, std::move(body), tables_cnt));
   }
   return events;
+}
+
+void HandleEventsID1(std::vector<Event> &events,
+                     std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+                     uint32_t start_time, uint32_t end_time,
+                     uint32_t tables_cnt, const Event &event) {
+  if (clients.find(event.GetClientName()) != clients.end()) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << ' ' << constants::ErrorAlreadyInClub
+              << std::endl;
+  } else if (event.GetTimeMinutes() < start_time ||
+             event.GetTimeMinutes() > end_time) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << ' ' << constants::ErrorNotOpen
+              << std::endl;
+  } else {
+    clients.insert({event.GetClientName(), Client(event.GetClientName())});
+  }
+}
+
+void HandleEventsID2(std::vector<Event> &events,
+                     std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+                     uint32_t start_time, uint32_t end_time,
+                     uint32_t tables_cnt, const Event &event) {
+  if (clients.find(event.GetClientName()) == clients.end()) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << ' ' << constants::ErrorNotInClub
+              << std::endl;
+    return;
+  }
+  auto table_id_opt = event.GetTableID();
+  if (!table_id_opt) {
+    throw std::runtime_error("No table for event with ID = 2");
+  }
+  auto table = *table_id_opt;
+  if (tables[table].Occupied()) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << ' ' << constants::ErrorOccupiedTable
+              << std::endl;
+    return;
+  }
+  tables[table].SetStartMinutes(event.GetTimeMinutes());
+  clients[event.GetClientName()].SetTable(table);
+}
+
+void HandleEventsID3(std::vector<Event> &events,
+                     std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+                     uint32_t start_time, uint32_t end_time,
+                     uint32_t tables_cnt, const Event &event) {
+  if (std::find_if(tables.begin(), tables.end(), [](const Table &table) {
+        return !table.Occupied();
+      }) != tables.end()) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << ' '
+              << constants::ErrorExistFreeTables << std::endl;
+    return;
+  }
+  if (queue.size() > tables_cnt) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::LeaveEventID << ' ' << event.GetClientName()
+              << std::endl;
+    return;
+  }
+  queue.push(event.GetClientName());
+}
+
+void HandleEventsID4(std::vector<Event> &events,
+                     std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+                     uint32_t start_time, uint32_t end_time,
+                     uint32_t tables_cnt, const Event &event) {
+  if (clients.find(event.GetClientName()) == clients.end()) {
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+              << constants::ErrorEventID << constants::ErrorNotInClub
+              << std::endl;
+    return;
+  }
+  auto table_id_opt = clients[event.GetClientName()].GetTableID();
+  if (!table_id_opt) {
+    clients.erase(event.GetClientName());
+  } else {
+    auto table_id = *table_id_opt;
+    tables[table_id].UpdateTotalMinutesAndRevenue(event.GetTimeMinutes());
+    clients.erase(event.GetClientName());
+    while (!queue.empty()) {
+      auto client_name = queue.front();
+      queue.pop();
+      if (clients.find(client_name) == clients.end()) {
+        continue;
+      }
+      clients.insert(
+          {client_name, Client(client_name, table_id)});
+      tables[table_id].SetStartMinutes(event.GetTimeMinutes());
+      std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
+                << constants::SeatEventID << ' ' << client_name << ' '
+                << table_id + 1 << std::endl;
+      break;
+    }
+  }
+}
+
+void HandleEndOfDayEvents(std::vector<Event> &events,
+                          std::unordered_map<ClientName, Client> &clients,
+                          std::vector<Table> &tables,
+                          std::queue<ClientName> &queue, uint32_t start_time,
+                          uint32_t end_time, uint32_t tables_cnt) {
+  auto it = clients.begin();
+  while (it != clients.end()) {
+    auto client_name = it->first;
+    auto table_id_opt = it->second.GetTableID();
+    if (table_id_opt){
+      auto table_id = *table_id_opt;
+      tables[table_id].UpdateTotalMinutesAndRevenue(end_time);
+    }
+    std::cout << GetTimeString(end_time) << ' ' << constants::LeaveEventID
+              << ' ' << client_name << std::endl;
+    it = clients.erase(it);
+  }
+}
+
+void HandleEvents(std::vector<Event> &events,
+                  std::unordered_map<ClientName, Client> &clients,
+                  std::vector<Table> &tables, std::queue<ClientName> &queue,
+                  uint32_t start_time, uint32_t end_time, uint32_t tables_cnt) {
+  for (const auto &event : events) {
+    auto event_id = event.GetID();
+    std::cout << GetTimeString(event.GetTimeMinutes()) << ' ' << event_id << ' '
+              << event.GetClientName() << std::endl;
+    if (event_id == 1) {
+      HandleEventsID1(events, clients, tables, queue, start_time, end_time,
+                      tables_cnt, event);
+    } else if (event_id == 2) {
+      HandleEventsID2(events, clients, tables, queue, start_time, end_time,
+                      tables_cnt, event);
+    } else if (event_id == 3) {
+      HandleEventsID3(events, clients, tables, queue, start_time, end_time,
+                      tables_cnt, event);
+    } else if (event_id == 4) {
+      HandleEventsID4(events, clients, tables, queue, start_time, end_time,
+                      tables_cnt, event);
+    }
+  }
+  HandleEndOfDayEvents(events, clients, tables, queue, start_time, end_time,
+                       tables_cnt);
 }

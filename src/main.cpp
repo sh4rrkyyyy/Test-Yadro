@@ -7,13 +7,13 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "client.h"
 #include "events.h"
 #include "constants.h"
+#include "table.h"
 #include "utils.h"
-class Client {
-  
-};
 
 
 int main(int argc, char **argv) {
@@ -57,5 +57,10 @@ int main(int argc, char **argv) {
   } catch (std::exception &e) {
     std::cout << "Incorrect events format " << e.what() << std::endl;
   }
+  std::unordered_map<ClientName, Client> clients;
+  std::vector<Table> tables(tables_cnt);
+  std::queue<ClientName> queue;
+  HandleEvents(events, clients, tables, queue, start_time_minutes, end_time_minutes, tables_cnt);
+  TablesInfo(tables);
   
 }
