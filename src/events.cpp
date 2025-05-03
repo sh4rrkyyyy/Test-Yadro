@@ -90,11 +90,9 @@ std::vector<Event> ReadEvents(std::ifstream &in, uint32_t tables_cnt) {
   return events;
 }
 
-void HandleEventsID1(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+void HandleEventsID1(std::unordered_map<ClientName, Client> &clients,
                      uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event) {
+                     const Event &event) {
   if (clients.find(event.GetClientName()) != clients.end()) {
     std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
               << constants::ErrorEventID << ' ' << constants::ErrorAlreadyInClub
@@ -109,11 +107,8 @@ void HandleEventsID1(std::vector<Event> &events,
   }
 }
 
-void HandleEventsID2(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event) {
+void HandleEventsID2(std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, const Event &event) {
   if (clients.find(event.GetClientName()) == clients.end()) {
     std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
               << constants::ErrorEventID << ' ' << constants::ErrorNotInClub
@@ -132,13 +127,10 @@ void HandleEventsID2(std::vector<Event> &events,
     return;
   }
   tables[table].SetStartMinutes(event.GetTimeMinutes());
-  clients[event.GetClientName()].SetTable(table);
+  clients[event.GetClientName()].SetTableID(table);
 }
 
-void HandleEventsID3(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
+void HandleEventsID3(std::vector<Table> &tables, std::queue<ClientName> &queue,
                      uint32_t tables_cnt, const Event &event) {
   if (std::find_if(tables.begin(), tables.end(), [](const Table &table) {
         return !table.Occupied();
@@ -157,11 +149,9 @@ void HandleEventsID3(std::vector<Event> &events,
   queue.push(event.GetClientName());
 }
 
-void HandleEventsID4(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
+void HandleEventsID4(std::unordered_map<ClientName, Client> &clients,
                      std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event) {
+                     const Event &event) {
   if (clients.find(event.GetClientName()) == clients.end()) {
     std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
               << constants::ErrorEventID << constants::ErrorNotInClub
@@ -181,8 +171,7 @@ void HandleEventsID4(std::vector<Event> &events,
       if (clients.find(client_name) == clients.end()) {
         continue;
       }
-      clients.insert(
-          {client_name, Client(client_name, table_id)});
+      clients[client_name].SetTableID(table_id);
       tables[table_id].SetStartMinutes(event.GetTimeMinutes());
       std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
                 << constants::SeatEventID << ' ' << client_name << ' '
@@ -192,16 +181,13 @@ void HandleEventsID4(std::vector<Event> &events,
   }
 }
 
-void HandleEndOfDayEvents(std::vector<Event> &events,
-                          std::unordered_map<ClientName, Client> &clients,
-                          std::vector<Table> &tables,
-                          std::queue<ClientName> &queue, uint32_t start_time,
-                          uint32_t end_time, uint32_t tables_cnt) {
+void HandleEndOfDayEvents(std::unordered_map<ClientName, Client> &clients,
+                          std::vector<Table> &tables, uint32_t end_time) {
   auto it = clients.begin();
   while (it != clients.end()) {
     auto client_name = it->first;
     auto table_id_opt = it->second.GetTableID();
-    if (table_id_opt){
+    if (table_id_opt) {
       auto table_id = *table_id_opt;
       tables[table_id].UpdateTotalMinutesAndRevenue(end_time);
     }
@@ -218,21 +204,21 @@ void HandleEvents(std::vector<Event> &events,
   for (const auto &event : events) {
     auto event_id = event.GetID();
     std::cout << GetTimeString(event.GetTimeMinutes()) << ' ' << event_id << ' '
-              << event.GetClientName() << std::endl;
+              << event.GetClientName();
+    if (event_id == 2) {
+      std::cout << ' ' << *event.GetTableID() + 1 << std::endl;
+    } else {
+      std::cout << std::endl;
+    }
     if (event_id == 1) {
-      HandleEventsID1(events, clients, tables, queue, start_time, end_time,
-                      tables_cnt, event);
+      HandleEventsID1(clients, start_time, end_time, event);
     } else if (event_id == 2) {
-      HandleEventsID2(events, clients, tables, queue, start_time, end_time,
-                      tables_cnt, event);
+      HandleEventsID2(clients, tables, event);
     } else if (event_id == 3) {
-      HandleEventsID3(events, clients, tables, queue, start_time, end_time,
-                      tables_cnt, event);
+      HandleEventsID3(tables, queue, tables_cnt, event);
     } else if (event_id == 4) {
-      HandleEventsID4(events, clients, tables, queue, start_time, end_time,
-                      tables_cnt, event);
+      HandleEventsID4(clients, tables, queue, event);
     }
   }
-  HandleEndOfDayEvents(events, clients, tables, queue, start_time, end_time,
-                       tables_cnt);
+  HandleEndOfDayEvents(clients, tables, end_time);
 }

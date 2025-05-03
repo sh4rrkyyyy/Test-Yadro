@@ -12,7 +12,7 @@ public:
   Client(std::string &&name);
 
   bool InClub() const { return in_club_; }
-  void SetTable(uint32_t table);
+  void SetTableID(uint32_t table);
   std::optional<uint32_t> GetTableID() const;
 
 private:

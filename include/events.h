@@ -34,38 +34,25 @@ void HandleEvents(std::vector<Event> &events,
                   std::vector<Table> &tables, std::queue<ClientName> &queue,
                   uint32_t start_time, uint32_t end_time, uint32_t tables_cnt);
 
-void HandleEventsID1(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
+void HandleEventsID1(std::unordered_map<ClientName, Client> &clients,
                      uint32_t start_time, uint32_t end_time,
+                     const Event &event);
+
+void HandleEventsID2(std::unordered_map<ClientName, Client> &clients,
+                     std::vector<Table> &tables, const Event &event);
+
+void HandleEventsID3(std::vector<Table> &tables, std::queue<ClientName> &queue,
                      uint32_t tables_cnt, const Event &event);
 
-void HandleEventsID2(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
+void HandleEventsID4(std::unordered_map<ClientName, Client> &clients,
                      std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event);
+                     const Event &event);
 
-void HandleEventsID3(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event);
-
-void HandleEventsID4(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event);
-
-void HandleLeaveEvent(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt, const Event &event);
+void HandleLeaveEvent(std::unordered_map<ClientName, Client> &clients,
+                      std::vector<Table> &tables, uint32_t end_time);
 
 void HandleEndOfDayEvents(std::vector<Event> &events,
-                     std::unordered_map<ClientName, Client> &clients,
-                     std::vector<Table> &tables, std::queue<ClientName> &queue,
-                     uint32_t start_time, uint32_t end_time,
-                     uint32_t tables_cnt);
+                          std::unordered_map<ClientName, Client> &clients,
+                          std::vector<Table> &tables,
+                          std::queue<ClientName> &queue, uint32_t start_time,
+                          uint32_t end_time, uint32_t tables_cnt);

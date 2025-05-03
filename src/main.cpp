@@ -47,20 +47,26 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  uint32_t cost_per_our;
-  in >> cost_per_our;
+  uint32_t cost_per_hour;
+  in >> cost_per_hour;
   std::string event;
   in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
   std::vector<Event> events;
   try {
     events = ReadEvents(in, tables_cnt);
   } catch (std::exception &e) {
-    std::cout << "Incorrect events format " << e.what() << std::endl;
+    std::cerr << "Incorrect events format " << e.what() << std::endl;
   }
   std::unordered_map<ClientName, Client> clients;
-  std::vector<Table> tables(tables_cnt);
+  std::vector<Table> tables(tables_cnt, Table(cost_per_hour));
   std::queue<ClientName> queue;
-  HandleEvents(events, clients, tables, queue, start_time_minutes, end_time_minutes, tables_cnt);
+  std::cout << GetTimeString(start_time_minutes) << std::endl;
+  try {
+    HandleEvents(events, clients, tables, queue, start_time_minutes, end_time_minutes, tables_cnt); 
+  } catch (std::exception &e) {
+    std::cerr << e.what() << std::endl;
+  }
+  std::cout << GetTimeString(end_time_minutes) << std::endl;
   TablesInfo(tables);
   
 }
