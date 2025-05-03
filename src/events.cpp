@@ -140,7 +140,7 @@ void HandleEventsID3(std::vector<Table> &tables, std::queue<ClientName> &queue,
               << constants::ErrorExistFreeTables << std::endl;
     return;
   }
-  if (queue.size() > tables_cnt) {
+  if (queue.size() >= tables_cnt) {
     std::cout << GetTimeString(event.GetTimeMinutes()) << ' '
               << constants::LeaveEventID << ' ' << event.GetClientName()
               << std::endl;

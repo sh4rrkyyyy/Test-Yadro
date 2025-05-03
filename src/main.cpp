@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     events = ReadEvents(in, tables_cnt);
   } catch (std::exception &e) {
     std::cerr << "Incorrect events format " << e.what() << std::endl;
+    return EXIT_FAILURE;
   }
   std::unordered_map<ClientName, Client> clients;
   std::vector<Table> tables(tables_cnt, Table(cost_per_hour));
@@ -65,6 +66,7 @@ int main(int argc, char **argv) {
     HandleEvents(events, clients, tables, queue, start_time_minutes, end_time_minutes, tables_cnt); 
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
+    return EXIT_FAILURE;
   }
   std::cout << GetTimeString(end_time_minutes) << std::endl;
   TablesInfo(tables);
